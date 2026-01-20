@@ -1,0 +1,225 @@
+@page "/housetypes"
+@page "/housetypes/{phaseId:int}"
+@rendermode InteractiveServer
+@using RealEstateCMS.Components.Shared.Icons
+
+@inject ApplicationDbContext DbContext
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<PageTitle>Tipuri de Locuințe</PageTitle>
+
+<div class="page-header">
+    <h1>Tipuri de Locuințe @(selectedPhase != null ? $"- {selectedPhase.Name}" : "")</h1>
+    <div style="display: flex; gap: 1rem;">
+        @if (PhaseId.HasValue)
+        {
+            <a href="/housetypes/create/@PhaseId" class="btn btn-primary">
+                <span class="icon">+</span> Adaugă Tip
+            </a>
+        }
+    </div>
+</div>
+
+@if (!PhaseId.HasValue)
+{
+    <div class="form-group">
+        <label>Selectează Development</label>
+        <select class="form-control" @onchange="OnDevelopmentChanged">
+            <option value="">-- Selectează --</option>
+            @foreach (var dev in developments)
+            {
+                <option value="@dev.DevelopmentId">@dev.Name</option>
+            }
+        </select>
+    </div>
+
+    @if (selectedDevelopmentId.HasValue)
+    {
+        <div class="form-group">
+            <label>Selectează Fază</label>
+            <select class="form-control" @onchange="OnPhaseChanged">
+                <option value="">-- Selectează --</option>
+                @foreach (var phase in phases)
+                {
+                    <option value="@phase.PhaseId">@phase.Name</option>
+                }
+            </select>
+        </div>
+    }
+}
+
+@if (houseTypes == null)
+{
+    <p class="loading">Se încarcă...</p>
+}
+else if (!houseTypes.Any())
+{
+    <div class="empty-state">
+        <p>Nu există tipuri de locuințe @(selectedPhase != null ? $"pentru {selectedPhase.Name}" : "").</p>
+        @if (PhaseId.HasValue)
+        {
+            <a href="/housetypes/create/@PhaseId" class="btn btn-primary">Creează primul tip</a>
+        }
+    </div>
+}
+else
+{
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Nume</th>
+                    <th>Fază</th>
+                    <th>Tip proprietate</th>
+                    <th>Camere</th>
+                    <th>Băi</th>
+                    <th>Preț de la</th>
+                    <th>Status</th>
+                    <th class="actions-column">Acțiuni</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var type in houseTypes)
+                {
+                    <tr>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <span><strong>@type.Name</strong></span>
+                                @if (type.IsFeatured)
+                                {
+                                    <StarIcon Title="Featured" />
+                                }
+                            </div>
+                        </td>
+                        <td>@type.Phase.Name</td>
+                        <td>@type.PropertyType</td>
+                        <td>@type.Bedrooms</td>
+                        <td>@type.Bathrooms</td>
+                        <td>@type.FromPrice.ToString("C0")</td>
+                        <td>
+                            @if (type.IsAvailable)
+                            {
+                                <span class="badge" style="background-color: #10b981; color: white;">Disponibil</span>
+                            }
+                            else
+                            {
+                                <span class="badge" style="background-color: #6b7280; color: white;">Indisponibil</span>
+                            }
+                        </td>
+                        <td class="actions-column">
+                            <div class="action-buttons">
+                                <a href="/housetypes/edit/@type.HouseTypeId" class="btn btn-sm btn-secondary" title="Editează">
+                                    <EditIcon />
+                                </a>
+                                <button @onclick="() => DeleteHouseType(type.HouseTypeId)" class="btn btn-sm btn-danger" title="Șterge">
+                                    <DeleteIcon />
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int? PhaseId { get; set; }
+
+    private List<HouseType>? houseTypes;
+    private List<Development> developments = new();
+    private List<Phase> phases = new();
+    private Phase? selectedPhase;
+    private int? selectedDevelopmentId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        developments = await DbContext.Developments.OrderBy(d => d.Name).ToListAsync();
+        
+        if (PhaseId.HasValue)
+        {
+            selectedPhase = await DbContext.Phases
+                .Include(p => p.Development)
+                .FirstOrDefaultAsync(p => p.PhaseId == PhaseId.Value);
+        }
+        
+        await LoadHouseTypes();
+    }
+
+    private async Task LoadHouseTypes()
+    {
+        var query = DbContext.HouseTypes
+            .Include(ht => ht.Phase)
+                .ThenInclude(p => p.Development)
+            .Include(ht => ht.Plots)
+            .AsQueryable();
+
+        if (PhaseId.HasValue)
+        {
+            query = query.Where(ht => ht.PhaseId == PhaseId.Value);
+        }
+
+        houseTypes = await query.OrderBy(ht => ht.Name).ToListAsync();
+    }
+
+    private async Task OnDevelopmentChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var devId))
+        {
+            selectedDevelopmentId = devId;
+            phases = await DbContext.Phases
+                .Where(p => p.DevelopmentId == devId)
+                .OrderBy(p => p.Name)
+                .ToListAsync();
+        }
+        else
+        {
+            selectedDevelopmentId = null;
+            phases.Clear();
+        }
+    }
+
+    private void OnPhaseChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var phaseId))
+        {
+            Navigation.NavigateTo($"/housetypes/{phaseId}");
+        }
+    }
+
+    private async Task DeleteHouseType(int houseTypeId)
+    {
+        try
+        {
+            var houseType = await DbContext.HouseTypes
+                .Include(ht => ht.Plots)
+                .FirstOrDefaultAsync(ht => ht.HouseTypeId == houseTypeId);
+
+            if (houseType == null)
+                return;
+
+            var confirmed = await JS.InvokeAsync<bool>("confirm",
+                $"Sigur doriți să ștergeți tipul '{houseType.Name}'?");
+
+            if (!confirmed) 
+                return;
+
+            if (houseType.Plots.Any())
+            {
+                await JS.InvokeVoidAsync("alert",
+                    "Nu puteți șterge acest tip deoarece are unități (plots) asociate.");
+                return;
+            }
+
+            DbContext.HouseTypes.Remove(houseType);
+            await DbContext.SaveChangesAsync();
+            await LoadHouseTypes();
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", $"Eroare la ștergere: {ex.Message}");
+        }
+    }
+}

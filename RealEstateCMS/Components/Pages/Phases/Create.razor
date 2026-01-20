@@ -1,0 +1,101 @@
+@page "/phases/create/{developmentId:int}"
+@rendermode InteractiveServer
+
+@inject ApplicationDbContext DbContext
+@inject NavigationManager Navigation
+
+<PageTitle>Adaugă Fază</PageTitle>
+
+<div class="page-header">
+    <h1>Adaugă Fază Nouă</h1>
+</div>
+
+@if (development == null)
+{
+    <p class="loading">Se încarcă...</p>
+}
+else
+{
+    <div class="form-container">
+        <EditForm Model="@phase" OnValidSubmit="@HandleValidSubmit" FormName="CreatePhaseForm">
+            <DataAnnotationsValidator />
+
+            <div class="form-group">
+                <label>Development</label>
+                <p class="form-text"><strong>@development.Name</strong></p>
+            </div>
+            
+            <div class="form-group">
+                <label for="name">Nume fază *</label>
+                <InputText id="name" @bind-Value="phase.Name" class="form-control" placeholder="ex. Faza 1" />
+                <ValidationMessage For="@(() => phase.Name)" />
+            </div>
+
+            <div class="form-group">
+                <label for="startDate">Data start</label>
+                <InputDate id="startDate" @bind-Value="phase.StartDate" class="form-control" />
+                <ValidationMessage For="@(() => phase.StartDate)" />
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Salvează</button>
+                <a href="/phases/@DevelopmentId" class="btn btn-secondary">Anulează</a>
+            </div>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger">
+                    @errorMessage
+                </div>
+            }
+        </EditForm>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int DevelopmentId { get; set; }
+
+    [SupplyParameterFromForm]
+    private Phase phase { get; set; } = new();
+    
+    private Development? development;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        development = await DbContext.Developments.FindAsync(DevelopmentId);
+        
+        if (development == null)
+        {
+            Navigation.NavigateTo("/developments");
+            return;
+        }
+
+        phase.DevelopmentId = DevelopmentId;
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        try
+        {
+            var exists = await DbContext.Phases
+                .AnyAsync(p => p.DevelopmentId == DevelopmentId && p.Name == phase.Name);
+
+            if (exists)
+            {
+                errorMessage = "Există deja o fază cu acest nume în acest development.";
+                return;
+            }
+
+            DbContext.Phases.Add(phase);
+            await DbContext.SaveChangesAsync();
+
+            Navigation.NavigateTo($"/phases/{DevelopmentId}");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Eroare la salvare: {ex.Message}";
+        }
+    }
+}

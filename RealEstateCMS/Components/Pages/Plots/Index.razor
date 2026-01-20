@@ -1,0 +1,299 @@
+@page "/plots"
+@page "/plots/{buildingId:int}"
+@rendermode InteractiveServer
+
+@inject ApplicationDbContext DbContext
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<PageTitle>Unități (Plots)</PageTitle>
+
+<div class="page-header">
+    <h1>Unități (Plots) @(selectedBuilding != null ? $"- {selectedBuilding.Name}" : "")</h1>
+
+    @if (BuildingId.HasValue)
+    {
+        <a href="/plots/create/@BuildingId" class="btn btn-primary">
+            <span class="icon">+</span> Adaugă Unitate
+        </a>
+    }
+</div>
+
+@if (!BuildingId.HasValue)
+{
+    <div class="form-group">
+        <label>Selectează Development</label>
+        <select class="form-control" @onchange="OnDevelopmentChanged">
+            <option value="">-- Selectează --</option>
+            @foreach (var dev in developments)
+            {
+                <option value="@dev.DevelopmentId">@dev.Name</option>
+            }
+        </select>
+    </div>
+
+    @if (selectedDevelopmentId.HasValue)
+    {
+        <div class="form-group">
+            <label>Selectează Fază</label>
+            <select class="form-control" @onchange="OnPhaseChanged">
+                <option value="">-- Selectează --</option>
+                @foreach (var phase in phases)
+                {
+                    <option value="@phase.PhaseId">@phase.Name</option>
+                }
+            </select>
+        </div>
+    }
+
+    @if (selectedPhaseId.HasValue)
+    {
+        <div class="form-group">
+            <label>Selectează Clădire</label>
+            <select class="form-control" @onchange="OnBuildingChanged">
+                <option value="">-- Selectează --</option>
+                @foreach (var building in buildings)
+                {
+                    <option value="@building.BuildingId">@building.Name</option>
+                }
+            </select>
+        </div>
+    }
+}
+
+@if (plots == null)
+{
+    <p class="loading">Se încarcă...</p>
+}
+else if (!plots.Any())
+{
+    <div class="empty-state">
+        <p>Nu există unități @(selectedBuilding != null ? $"pentru {selectedBuilding.Name}" : "").</p>
+
+        @if (BuildingId.HasValue)
+        {
+            <a href="/plots/create/@BuildingId" class="btn btn-primary">
+                Creează prima unitate
+            </a>
+        }
+    </div>
+}
+else
+{
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Nr.</th>
+                    <th>Nume</th>
+                    <th>Clădire</th>
+                    <th>Tip</th>
+                    <th>Camere</th>
+                    <th>Preț</th>
+                    <th>Status</th>
+                    <th>Etaj</th>
+                    <th class="actions-column">Acțiuni</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var plot in plots)
+                {
+                    <tr>
+                        <td><strong>@plot.Number</strong></td>
+
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <span>@(plot.Name ?? "-")</span>
+
+                                @if (plot.IsFeatured)
+                                {
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" title="Featured">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
+                                    </svg>
+                                }
+                                @if (plot.IsShowHome)
+                                {
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" title="ShowHome">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                                    </svg>
+                                }
+                            </div>
+                        </td>
+
+                        <td>@plot.Building.Name</td>
+                        <td>@plot.HouseType.Name</td>
+                        <td>@plot.HouseType.Bedrooms cam, @plot.HouseType.Bathrooms băi</td>
+                        <td>@plot.Price.ToString("C0")</td>
+
+                        <td>
+                            @switch (plot.Status)
+                            {
+                                case PlotStatus.Available:
+                                    <span class="badge" style="background:#10b981;color:white;">Disponibil</span>
+                                    break;
+                                case PlotStatus.Reserved:
+                                    <span class="badge" style="background:#f59e0b;color:white;">Rezervat</span>
+                                    break;
+                                case PlotStatus.Sold:
+                                    <span class="badge" style="background:#ef4444;color:white;">Vândut</span>
+                                    break;
+                            }
+                        </td>
+
+                        <td>@(plot.Level?.ToString() ?? "-")</td>
+
+                        <td class="actions-column">
+                            <div class="action-buttons">
+                                <!-- EDIT -->
+                                <a href="/plots/edit/@plot.PlotId"
+                                   class="btn btn-sm btn-secondary"
+                                   title="Editează">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <path stroke-linecap="round"
+                                              stroke-linejoin="round"
+                                              stroke-width="2"
+                                              d="M11 5H6a2 2 0 00-2 2v11
+                                                 a2 2 0 002 2h11a2 2 0 002-2v-5
+                                                 m-1.414-9.414a2 2 0 112.828 2.828
+                                                 L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                </a>
+
+                                <!-- DELETE -->
+                                <button @onclick="() => DeletePlot(plot.PlotId)"
+                                        class="btn btn-sm btn-danger"
+                                        title="Șterge">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <path stroke-linecap="round"
+                                              stroke-linejoin="round"
+                                              stroke-width="2"
+                                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862
+                                                 a2 2 0 01-1.995-1.858L5 7
+                                                 m5 4v6m4-6v6
+                                                 m1-10V4a1 1 0 00-1-1h-4
+                                                 a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    [Parameter] public int? BuildingId { get; set; }
+
+    private List<Plot>? plots;
+    private List<Development> developments = new();
+    private List<Phase> phases = new();
+    private List<Building> buildings = new();
+    private Building? selectedBuilding;
+    private int? selectedDevelopmentId;
+    private int? selectedPhaseId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        developments = await DbContext.Developments
+            .OrderBy(d => d.Name)
+            .ToListAsync();
+
+        if (BuildingId.HasValue)
+        {
+            selectedBuilding = await DbContext.Buildings
+                .Include(b => b.Phase)
+                    .ThenInclude(p => p.Development)
+                .FirstOrDefaultAsync(b => b.BuildingId == BuildingId);
+        }
+
+        await LoadPlots();
+    }
+
+    private async Task LoadPlots()
+    {
+        var query = DbContext.Plots
+            .Include(p => p.Building)
+            .Include(p => p.HouseType)
+            .Include(p => p.Images)
+            .AsQueryable();
+
+        if (BuildingId.HasValue)
+            query = query.Where(p => p.BuildingId == BuildingId);
+
+        plots = await query.OrderBy(p => p.Number).ToListAsync();
+    }
+
+    private async Task OnDevelopmentChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var devId))
+        {
+            selectedDevelopmentId = devId;
+            phases = await DbContext.Phases
+                .Where(p => p.DevelopmentId == devId)
+                .OrderBy(p => p.Name)
+                .ToListAsync();
+            buildings.Clear();
+            selectedPhaseId = null;
+        }
+        else
+        {
+            selectedDevelopmentId = null;
+            phases.Clear();
+            buildings.Clear();
+        }
+    }
+
+    private async Task OnPhaseChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var phaseId))
+        {
+            selectedPhaseId = phaseId;
+            buildings = await DbContext.Buildings
+                .Where(b => b.PhaseId == phaseId)
+                .OrderBy(b => b.Name)
+                .ToListAsync();
+        }
+        else
+        {
+            selectedPhaseId = null;
+            buildings.Clear();
+        }
+    }
+
+    private void OnBuildingChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var buildingId))
+            Navigation.NavigateTo($"/plots/{buildingId}");
+    }
+
+    private async Task DeletePlot(int plotId)
+    {
+        try
+        {
+            var plot = await DbContext.Plots
+                .Include(p => p.Images)
+                .FirstOrDefaultAsync(p => p.PlotId == plotId);
+
+            if (plot == null)
+                return;
+
+            var confirmed = await JS.InvokeAsync<bool>(
+                "confirm",
+                $"Sigur doriți să ștergeți unitatea '{plot.Name ?? plot.Number.ToString()}'?"
+            );
+
+            if (!confirmed) 
+                return;
+
+            DbContext.Plots.Remove(plot);
+            await DbContext.SaveChangesAsync();
+            await LoadPlots();
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", $"Eroare la ștergere: {ex.Message}");
+        }
+    }
+}

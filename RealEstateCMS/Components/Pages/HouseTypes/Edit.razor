@@ -1,0 +1,93 @@
+@page "/housetypes/edit/{id:int}"
+@rendermode InteractiveServer
+@inherits EditHouseType
+
+<EditPageLayout Title="Editează Tip de Locuință" Entity="houseType">
+
+    <EditForm Model="@houseType"
+              OnValidSubmit="@HandleValidSubmit"
+              FormName="EditHouseTypeForm">
+
+        <DataAnnotationsValidator />
+
+        <div class="form-group">
+            <label>Fază</label>
+            <p class="form-text">
+                <strong>@houseType!.Phase.Name</strong>
+                (@houseType.Phase.Development.Name)
+            </p>
+        </div>
+
+        <div class="form-group">
+            <label for="name">Nume tip *</label>
+            <InputText id="name"
+                       @bind-Value="houseType!.Name"
+                       class="form-control" />
+            <ValidationMessage For="@(() => houseType!.Name)" />
+        </div>
+
+        <div class="form-group">
+            <label for="propertyType">Tip proprietate *</label>
+            <InputSelect id="propertyType"
+                         @bind-Value="houseType!.PropertyType"
+                         class="form-control">
+                @foreach (PropertyType type in Enum.GetValues(typeof(PropertyType)))
+                {
+                    <option value="@type">@type</option>
+                }
+            </InputSelect>
+            <ValidationMessage For="@(() => houseType!.PropertyType)" />
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+            <div class="form-group">
+                <label for="bedrooms">Camere *</label>
+                <InputNumber id="bedrooms"
+                             @bind-Value="houseType!.Bedrooms"
+                             class="form-control" />
+                <ValidationMessage For="@(() => houseType!.Bedrooms)" />
+            </div>
+
+            <div class="form-group">
+                <label for="bathrooms">Băi *</label>
+                <InputNumber id="bathrooms"
+                             @bind-Value="houseType!.Bathrooms"
+                             class="form-control" />
+                <ValidationMessage For="@(() => houseType!.Bathrooms)" />
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="fromPrice">Preț de la (RON) *</label>
+            <InputNumber id="fromPrice"
+                         @bind-Value="houseType!.FromPrice"
+                         class="form-control" />
+            <ValidationMessage For="@(() => houseType!.FromPrice)" />
+        </div>
+
+        <div class="form-group">
+            <label>
+                <InputCheckbox @bind-Value="houseType!.IsAvailable" />
+                Disponibil
+            </label>
+        </div>
+
+        <div class="form-group">
+            <label>
+                <InputCheckbox @bind-Value="houseType!.IsFeatured" />
+                Featured (recomandat)
+            </label>
+        </div>
+
+        <FormActions CancelUrl="@($"/housetypes/{houseType!.PhaseId}")" />
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger">@errorMessage</div>
+        }
+    </EditForm>
+
+    <ImageGallery Images="houseType!.Images"
+                  AddImageUrl="@($"/images/create/housetype/{houseType!.HouseTypeId}")" />
+
+</EditPageLayout>

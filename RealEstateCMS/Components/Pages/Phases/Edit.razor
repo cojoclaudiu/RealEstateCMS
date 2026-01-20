@@ -1,0 +1,44 @@
+@page "/phases/edit/{id:int}"
+@rendermode InteractiveServer
+@inherits EditPhase
+
+<EditPageLayout Title="Editează Fază" Entity="phase">
+
+    <EditForm Model="@phase"
+              OnValidSubmit="@HandleValidSubmit"
+              FormName="EditPhaseForm">
+
+        <DataAnnotationsValidator />
+
+        <div class="form-group">
+            <label>Development</label>
+            <p class="form-text">
+                <strong>@phase!.Development.Name</strong>
+            </p>
+        </div>
+
+        <div class="form-group">
+            <label for="name">Nume fază *</label>
+            <InputText id="name"
+                       @bind-Value="phase!.Name"
+                       class="form-control" />
+            <ValidationMessage For="@(() => phase!.Name)" />
+        </div>
+
+        <div class="form-group">
+            <label for="startDate">Data start</label>
+            <InputDate id="startDate"
+                       @bind-Value="phase!.StartDate"
+                       class="form-control" />
+            <ValidationMessage For="@(() => phase!.StartDate)" />
+        </div>
+
+        <FormActions CancelUrl="@($"/phases/{phase!.DevelopmentId}")" />
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger">@errorMessage</div>
+        }
+    </EditForm>
+
+</EditPageLayout>

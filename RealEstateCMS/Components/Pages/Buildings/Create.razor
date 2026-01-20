@@ -1,0 +1,134 @@
+@page "/buildings/create/{phaseId:int}"
+@rendermode InteractiveServer
+
+@inject ApplicationDbContext DbContext
+@inject NavigationManager Navigation
+
+<PageTitle>Adaugă Clădire</PageTitle>
+
+<div class="page-header">
+    <h1>Adaugă Clădire Nouă</h1>
+</div>
+
+@if (phase == null)
+{
+    <p class="loading">Se încarcă...</p>
+}
+else
+{
+    <div class="form-container">
+        <EditForm Model="@building"
+                  OnValidSubmit="@HandleValidSubmit"
+                  FormName="CreateBuildingForm">
+            <DataAnnotationsValidator />
+
+            <!-- Phase (read-only) -->
+            <div class="form-group">
+                <label>Fază</label>
+                <p class="form-text">
+                    <strong>@phase.Name</strong>
+                    (@phase.Development.Name)
+                </p>
+            </div>
+
+            <!-- Building name -->
+            <div class="form-group">
+                <label for="name">Nume clădire *</label>
+                <InputText id="name"
+                           @bind-Value="building.Name"
+                           class="form-control"
+                           placeholder="ex. Blocul A" />
+                <ValidationMessage For="@(() => building.Name)" />
+            </div>
+
+            <!-- Floors count -->
+            <div class="form-group">
+                <label for="floors">Număr de etaje *</label>
+                <InputNumber id="floors"
+                             @bind-Value="building.FloorsCount"
+                             class="form-control"
+                             min="1" />
+                <ValidationMessage For="@(() => building.FloorsCount)" />
+            </div>
+
+            <!-- Actions -->
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                    Salvează
+                </button>
+                <a href="/buildings/@PhaseId" class="btn btn-secondary">
+                    Anulează
+                </a>
+            </div>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger">
+                    @errorMessage
+                </div>
+            }
+        </EditForm>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int PhaseId { get; set; }
+
+    [SupplyParameterFromForm]
+    private Building building { get; set; } = new()
+    {
+        FloorsCount = 1
+    };
+
+    private Phase? phase;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        phase = await DbContext.Phases
+            .Include(p => p.Development)
+            .FirstOrDefaultAsync(p => p.PhaseId == PhaseId);
+
+        if (phase == null)
+        {
+            Navigation.NavigateTo("/buildings");
+            return;
+        }
+
+        building.PhaseId = PhaseId;
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        try
+        {
+            var exists = await DbContext.Buildings
+                .AnyAsync(b =>
+                    b.PhaseId == PhaseId &&
+                    b.Name == building.Name);
+
+            if (exists)
+            {
+                errorMessage = "Există deja o clădire cu acest nume în această fază.";
+                return;
+            }
+
+            DbContext.Buildings.Add(building);
+            await DbContext.SaveChangesAsync();
+
+            // Redirect to Edit so images can be added
+            Navigation.NavigateTo($"/buildings/edit/{building.BuildingId}");
+        }
+        catch (NavigationException)
+        {
+            // This is expected – do NOT treat as error
+            throw;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Eroare la salvare: {ex.Message}";
+        }
+
+    }
+}

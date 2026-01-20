@@ -1,0 +1,141 @@
+@page "/images"
+@rendermode InteractiveServer
+
+@using RealEstateCMS.Services
+
+@inject ApplicationDbContext DbContext
+@inject FileUploadService FileUploadService
+@inject NavigationManager
+@inject IJSRuntime JS
+
+<PageTitle>Imagini</PageTitle>
+
+<div class="page-header">
+    <h1>Toate Imaginile</h1>
+</div>
+
+<div class="form-group">
+    <label>Filtrează după tip</label>
+    <select class="form-control" @onchange="OnOwnerTypeChanged">
+        <option value="">-- Toate --</option>
+        @foreach (OwnerType type in Enum.GetValues(typeof(OwnerType)))
+        {
+            <option value="@type">@type</option>
+        }
+    </select>
+</div>
+
+@if (images == null)
+{
+    <p class="loading">Se încarcă...</p>
+}
+else if (!images.Any())
+{
+    <div class="empty-state">
+        <p>Nu există imagini încărcate.</p>
+    </div>
+}
+else
+{
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1.5rem; margin-top: 2rem;">
+        @foreach (var image in images)
+        {
+            <div style="border: 1px solid #e5e7eb; border-radius: 0.5rem; overflow: hidden; background: white;">
+                <img src="@image.ImageUrl" alt="@image.AltText" style="width: 100%; height: 200px; object-fit: cover;" />
+                <div style="padding: 1rem;">
+                    <div style="margin-bottom: 0.5rem;">
+                        <span class="badge">@image.OwnerType</span>
+                        @if (image.IsPrimary)
+                        {
+                            <span class="badge" style="background-color: #10b981; color: white;">Principală</span>
+                        }
+                    </div>
+                    <p style="font-size: 0.875rem; color: #6b7280; margin: 0.5rem 0;">@image.FileName</p>
+                    <p style="font-size: 0.75rem; color: #9ca3af; margin: 0.5rem 0;">@image.UploadedAt.ToString("dd.MM.yyyy HH:mm")</p>
+                    
+                    <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
+                        <a href="@GetEditUrl(image)" class="btn btn-sm btn-secondary" style="flex: 1;">
+                            Vizualizează
+                        </a>
+                        <button @onclick="() => DeleteImage(image)" class="btn btn-sm btn-danger">
+                            Șterge
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<Image>? images;
+    private OwnerType? selectedOwnerType;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadImages();
+    }
+
+    private async Task LoadImages()
+    {
+        var query = DbContext.Images.AsQueryable();
+
+        if (selectedOwnerType.HasValue)
+        {
+            query = query.Where(i => i.OwnerType == selectedOwnerType.Value);
+        }
+
+        images = await query
+            .OrderByDescending(i => i.UploadedAt)
+            .ToListAsync();
+    }
+
+    private async Task OnOwnerTypeChanged(ChangeEventArgs e)
+    {
+        if (Enum.TryParse<OwnerType>(e.Value?.ToString(), out var ownerType))
+        {
+            selectedOwnerType = ownerType;
+        }
+        else
+        {
+            selectedOwnerType = null;
+        }
+        await LoadImages();
+    }
+
+    private string GetEditUrl(Image image)
+    {
+        return image.OwnerType switch
+        {
+            OwnerType.Building => $"/buildings/edit/{image.OwnerId}",
+            OwnerType.HouseType => $"/housetypes/edit/{image.OwnerId}",
+            OwnerType.Plot => $"/plots/edit/{image.OwnerId}",
+            _ => "/"
+        };
+    }
+
+    private async Task DeleteImage(Image image)
+    {
+        var confirmed = await JS.InvokeAsync<bool>("confirm",
+            $"Sigur doriți să ștergeți imaginea '{image.FileName}'?");
+
+        if (!confirmed) return;
+
+        try
+        {
+            // Delete file from disk
+            FileUploadService.DeleteImage(image.FilePath);
+
+            // Delete from database
+            DbContext.Images.Remove(image);
+            await DbContext.SaveChangesAsync();
+            
+            // Reload images
+            await LoadImages();
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", $"Eroare la ștergere: {ex.Message}");
+        }
+    }
+}

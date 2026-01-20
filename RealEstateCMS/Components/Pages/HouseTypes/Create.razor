@@ -1,0 +1,182 @@
+@page "/housetypes/create/{phaseId:int}"
+@rendermode InteractiveServer
+
+@inject ApplicationDbContext DbContext
+@inject NavigationManager Navigation
+
+<PageTitle>Adaugă Tip Locuință</PageTitle>
+
+<div class="page-header">
+    <h1>Adaugă Tip de Locuință Nou</h1>
+</div>
+
+@if (phase == null)
+{
+    <p class="loading">Se încarcă...</p>
+}
+else
+{
+    <div class="form-container">
+        <EditForm Model="@houseType"
+                  OnValidSubmit="@HandleValidSubmit"
+                  FormName="CreateHouseTypeForm">
+            <DataAnnotationsValidator />
+
+            <!-- Phase (read-only) -->
+            <div class="form-group">
+                <label>Fază</label>
+                <p class="form-text">
+                    <strong>@phase.Name</strong>
+                    (@phase.Development.Name)
+                </p>
+            </div>
+
+            <!-- Name -->
+            <div class="form-group">
+                <label for="name">Nume tip *</label>
+                <InputText id="name"
+                           @bind-Value="houseType.Name"
+                           class="form-control"
+                           placeholder="ex. Tip A - 2 camere" />
+                <ValidationMessage For="@(() => houseType.Name)" />
+            </div>
+
+            <!-- Property type -->
+            <div class="form-group">
+                <label for="propertyType">Tip proprietate *</label>
+                <InputSelect id="propertyType"
+                             @bind-Value="houseType.PropertyType"
+                             class="form-control">
+                    @foreach (PropertyType type in Enum.GetValues(typeof(PropertyType)))
+                    {
+                        <option value="@type">@type</option>
+                    }
+                </InputSelect>
+                <ValidationMessage For="@(() => houseType.PropertyType)" />
+            </div>
+
+            <!-- Rooms -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+                <div class="form-group">
+                    <label for="bedrooms">Camere *</label>
+                    <InputNumber id="bedrooms"
+                                 @bind-Value="houseType.Bedrooms"
+                                 class="form-control"
+                                 min="0" />
+                    <ValidationMessage For="@(() => houseType.Bedrooms)" />
+                </div>
+
+                <div class="form-group">
+                    <label for="bathrooms">Băi *</label>
+                    <InputNumber id="bathrooms"
+                                 @bind-Value="houseType.Bathrooms"
+                                 class="form-control"
+                                 min="0" />
+                    <ValidationMessage For="@(() => houseType.Bathrooms)" />
+                </div>
+            </div>
+
+            <!-- Base price -->
+            <div class="form-group">
+                <label for="fromPrice">Preț de la (RON) *</label>
+                <InputNumber id="fromPrice"
+                             @bind-Value="houseType.FromPrice"
+                             class="form-control"
+                             min="0"
+                             step="1000" />
+                <ValidationMessage For="@(() => houseType.FromPrice)" />
+            </div>
+
+            <!-- Flags -->
+            <div class="form-group">
+                <label>
+                    <InputCheckbox @bind-Value="houseType.IsAvailable" />
+                    Disponibil
+                </label>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    <InputCheckbox @bind-Value="houseType.IsFeatured" />
+                    Featured (recomandat)
+                </label>
+            </div>
+
+            <!-- Actions -->
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                    Salvează
+                </button>
+                <a href="/housetypes/@PhaseId" class="btn btn-secondary">
+                    Anulează
+                </a>
+            </div>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger">
+                    @errorMessage
+                </div>
+            }
+        </EditForm>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int PhaseId { get; set; }
+
+    private HouseType houseType = new()
+    {
+        IsAvailable = true
+    };
+
+    private Phase? phase;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        phase = await DbContext.Phases
+            .Include(p => p.Development)
+            .FirstOrDefaultAsync(p => p.PhaseId == PhaseId);
+
+        if (phase == null)
+        {
+            Navigation.NavigateTo("/housetypes");
+            return;
+        }
+
+        houseType.PhaseId = PhaseId;
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        try
+        {
+            var exists = await DbContext.HouseTypes
+                .AnyAsync(ht =>
+                    ht.PhaseId == PhaseId &&
+                    ht.Name == houseType.Name);
+
+            if (exists)
+            {
+                errorMessage = "Există deja un tip cu acest nume în această fază.";
+                return;
+            }
+
+            DbContext.HouseTypes.Add(houseType);
+            await DbContext.SaveChangesAsync();
+
+            // Redirect to Edit → images added there
+            Navigation.NavigateTo($"/housetypes/edit/{houseType.HouseTypeId}");
+        }
+        catch (NavigationException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Eroare la salvare: {ex.Message}";
+        }
+    }
+}

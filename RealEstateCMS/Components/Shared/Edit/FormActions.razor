@@ -1,0 +1,9 @@
+<div class="form-actions">
+    <button type="submit" class="btn btn-primary">@SaveText</button>
+    <a href="@CancelUrl" class="btn btn-secondary">Anulează</a>
+</div>
+
+@code {
+    [Parameter] public string SaveText { get; set; } = "Salvează";
+    [Parameter] public string CancelUrl { get; set; } = "/";
+}

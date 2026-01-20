@@ -1,0 +1,117 @@
+@page "/plots/edit/{id:int}"
+@rendermode InteractiveServer
+
+<EditPageLayout Title="Editează Unitate (Plot)" Entity="plot">
+
+    <EditForm Model="@plot"
+              OnValidSubmit="@HandleValidSubmit"
+              FormName="EditPlotForm">
+
+        <DataAnnotationsValidator />
+
+        <div class="form-group">
+            <label>Clădire</label>
+            <p class="form-text">
+                <strong>@plot!.Building.Name</strong>
+                (@plot.Building.Phase.Name - @plot.Building.Phase.Development.Name)
+            </p>
+        </div>
+
+        <div class="form-group">
+            <label for="houseTypeId">Tip locuință *</label>
+            <InputSelect id="houseTypeId"
+                         @bind-Value="plot!.HouseTypeId"
+                         class="form-control">
+                @foreach (var type in houseTypes)
+                {
+                    <option value="@type.HouseTypeId">
+                        @type.Name (@type.Bedrooms cam, @type.Bathrooms băi -
+                        @type.FromPrice.ToString("C0"))
+                    </option>
+                }
+            </InputSelect>
+            <ValidationMessage For="@(() => plot!.HouseTypeId)" />
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+            <div class="form-group">
+                <label for="number">Număr *</label>
+                <InputNumber id="number"
+                             @bind-Value="plot!.Number"
+                             class="form-control" />
+                <ValidationMessage For="@(() => plot!.Number)" />
+            </div>
+
+            <div class="form-group">
+                <label for="level">Etaj</label>
+                <InputNumber id="level"
+                             @bind-Value="plot!.Level"
+                             class="form-control" />
+                <ValidationMessage For="@(() => plot!.Level)" />
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="name">Nume (opțional)</label>
+            <InputText id="name"
+                       @bind-Value="plot!.Name"
+                       class="form-control" />
+            <ValidationMessage For="@(() => plot!.Name)" />
+        </div>
+
+        <div class="form-group">
+            <label for="price">Preț (RON) *</label>
+            <InputNumber id="price"
+                         @bind-Value="plot!.Price"
+                         class="form-control" />
+            <ValidationMessage For="@(() => plot!.Price)" />
+        </div>
+
+        <div class="form-group">
+            <label for="status">Status *</label>
+            <InputSelect id="status"
+                         @bind-Value="plot!.Status"
+                         class="form-control">
+                @foreach (PlotStatus status in Enum.GetValues(typeof(PlotStatus)))
+                {
+                    <option value="@status">@status</option>
+                }
+            </InputSelect>
+            <ValidationMessage For="@(() => plot!.Status)" />
+        </div>
+
+        <div class="form-group">
+            <label for="marketingMessage">Mesaj marketing</label>
+            <InputTextArea id="marketingMessage"
+                           @bind-Value="plot!.MarketingMessage"
+                           class="form-control"
+                           rows="3" />
+            <ValidationMessage For="@(() => plot!.MarketingMessage)" />
+        </div>
+
+        <div class="form-group">
+            <label>
+                <InputCheckbox @bind-Value="plot!.IsShowHome" />
+                ShowHome (casă model)
+            </label>
+        </div>
+
+        <div class="form-group">
+            <label>
+                <InputCheckbox @bind-Value="plot!.IsFeatured" />
+                Featured (recomandat)
+            </label>
+        </div>
+
+        <FormActions CancelUrl="@($"/plots/{buildingId}")" />
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger">@errorMessage</div>
+        }
+    </EditForm>
+
+    <ImageGallery Images="plot!.Images"
+                  AddImageUrl="@($"/images/create/plot/{plot!.PlotId}")" />
+
+</EditPageLayout>

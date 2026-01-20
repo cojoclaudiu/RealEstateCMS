@@ -1,0 +1,44 @@
+@page "/developments/edit/{id:int}"
+@rendermode InteractiveServer
+@inherits EditDevelopment
+
+<EditPageLayout Title="Editează Development" Entity="development">
+
+    <EditForm Model="@development"
+              OnValidSubmit="@HandleValidSubmit"
+              FormName="EditDevelopmentForm">
+
+        <DataAnnotationsValidator />
+
+        <div class="form-group">
+            <label for="name">Nume *</label>
+            <InputText id="name"
+                       @bind-Value="development!.Name"
+                       class="form-control" />
+            <ValidationMessage For="@(() => development!.Name)" />
+        </div>
+
+        <div class="form-group">
+            <label for="location">Locație</label>
+            <InputText id="location"
+                       @bind-Value="development!.Location"
+                       class="form-control" />
+            <ValidationMessage For="@(() => development!.Location)" />
+        </div>
+
+        <div class="form-group">
+            <label>Data creării</label>
+            <p class="form-text">
+                @development!.CreatedAt.ToString("dd.MM.yyyy HH:mm")
+            </p>
+        </div>
+
+        <FormActions CancelUrl="/developments" />
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger">@errorMessage</div>
+        }
+    </EditForm>
+
+</EditPageLayout>
