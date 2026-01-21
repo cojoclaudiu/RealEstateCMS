@@ -20,35 +20,11 @@ main {
     flex-direction: column;
 }
 
-.top-row {
-    background: white;
-    border-bottom: 1px solid hsl(var(--border));
-    height: 3.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    padding: 0 2rem;
-    position: sticky;
-    top: 0;
-    z-index: 30;
-}
-
-.top-row a {
-    color: hsl(var(--muted-foreground));
-    text-decoration: none;
-    font-size: 0.875rem;
-    transition: color 0.2s;
-}
-
-.top-row a:hover {
-    color: hsl(var(--foreground));
-}
-
 .content {
     flex: 1;
     padding: 2rem;
-    max-width: 1400px;
     width: 100%;
+    max-width: 1400px;
     margin: 0 auto;
 }
 
