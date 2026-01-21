@@ -2,7 +2,7 @@
 @page "/buildings/{phaseId:int}"
 @rendermode InteractiveServer
 
-@using RealEstateCMS.Components.Shared.Icons
+@using RealEstateCMS.Components.Shared.Actions
 
 <PageTitle>Clădiri</PageTitle>
 
@@ -86,14 +86,10 @@ else
                         <td><span class="badge">@building.Plots.Count</span></td>
                         <td><span class="badge">@building.Images.Count</span></td>
                         <td class="actions-column">
-                            <div class="action-buttons">
-                                <a href="/buildings/edit/@building.BuildingId" class="btn btn-sm btn-secondary" title="Editează">
-                                    <EditIcon />
-                                </a>
-                                <button @onclick="() => DeleteBuilding(building)" class="btn btn-sm btn-danger" title="Șterge">
-                                    <DeleteIcon />
-                                </button>
-                            </div>
+                            <EditDeleteActions
+                                EditUrl="@($"/buildings/edit/{building.BuildingId}")"
+                                OnDelete="() => DeleteBuilding(building)"
+                                />
                         </td>
                     </tr>
                 }

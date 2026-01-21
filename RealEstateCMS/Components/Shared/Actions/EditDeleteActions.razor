@@ -1,0 +1,19 @@
+@using RealEstateCMS.Components.Shared.Icons
+<div class="action-buttons">
+    <a href="@EditUrl"
+       class="btn btn-sm btn-secondary"
+       title="Editează">
+        <EditIcon />
+    </a>
+
+    <button @onclick="OnDelete"
+            class="btn btn-sm btn-danger"
+            title="Șterge">
+        <DeleteIcon />
+    </button>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string EditUrl { get; set; } = default!;
+    [Parameter, EditorRequired] public EventCallback OnDelete { get; set; }
+}

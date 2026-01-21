@@ -1,6 +1,7 @@
 @page "/housetypes"
 @page "/housetypes/{phaseId:int}"
 @rendermode InteractiveServer
+@using RealEstateCMS.Components.Shared.Actions
 @using RealEstateCMS.Components.Shared.Icons
 
 <PageTitle>Tipuri de Locuințe</PageTitle>
@@ -106,18 +107,9 @@ else
                             }
                         </td>
                         <td class="actions-column">
-                            <div class="action-buttons">
-                                <a href="/housetypes/edit/@type.HouseTypeId"
-                                   class="btn btn-sm btn-secondary"
-                                   title="Editează">
-                                    <EditIcon />
-                                </a>
-                                <button @onclick="() => DeleteHouseType(type.HouseTypeId)"
-                                        class="btn btn-sm btn-danger"
-                                        title="Șterge">
-                                    <DeleteIcon />
-                                </button>
-                            </div>
+                            <EditDeleteActions
+                                EditUrl="@($"/housetypes/edit/{type.HouseTypeId}")"
+                                OnDelete="() => DeleteHouseType(type.HouseTypeId)"/>
                         </td>
                     </tr>
                 }

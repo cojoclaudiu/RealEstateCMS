@@ -2,6 +2,7 @@
 @page "/plots/{buildingId:int}"
 @rendermode InteractiveServer
 
+@using RealEstateCMS.Components.Shared.Actions
 @using RealEstateCMS.Components.Shared.Icons
 
 
@@ -139,19 +140,10 @@ else
                         <td>@(plot.Level?.ToString() ?? "-")</td>
 
                         <td class="actions-column">
-                            <div class="action-buttons">
-                                <a href="/plots/edit/@plot.PlotId"
-                                   class="btn btn-sm btn-secondary"
-                                   title="Editează">
-                                    <EditIcon />
-                                </a>
-
-                                <button @onclick="() => DeletePlot(plot.PlotId)"
-                                        class="btn btn-sm btn-danger"
-                                        title="Șterge">
-                                    <DeleteIcon />
-                                </button>
-                            </div>
+                            <EditDeleteActions 
+                                EditUrl="@($"/plots/edit/{plot.PlotId}")"
+                                OnDelete="() => DeletePlot(plot.PlotId)"
+                                />
                         </td>
 
                     </tr>
