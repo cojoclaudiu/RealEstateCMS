@@ -1,9 +1,6 @@
 @page "/plots/create/{buildingId:int}"
 @rendermode InteractiveServer
 
-@inject ApplicationDbContext DbContext
-@inject NavigationManager Navigation
-
 <PageTitle>Adaugă Unitate</PageTitle>
 
 <div class="page-header">
@@ -17,55 +14,80 @@
 else
 {
     <div class="form-container">
-        <EditForm Model="@plot" OnValidSubmit="@HandleValidSubmit" FormName="CreatePlotForm">
+        <EditForm Model="@plot"
+                  OnValidSubmit="@HandleValidSubmit"
+                  FormName="CreatePlotForm">
+
             <DataAnnotationsValidator />
 
             <div class="form-group">
                 <label>Clădire</label>
-                <p class="form-text"><strong>@building.Name</strong> (@building.Phase.Name - @building.Phase.Development.Name)</p>
+                <p class="form-text">
+                    <strong>@building.Name</strong>
+                    (@building.Phase.Name - @building.Phase.Development.Name)
+                </p>
             </div>
 
             <div class="form-group">
                 <label for="houseTypeId">Tip locuință *</label>
-                <InputSelect id="houseTypeId" @bind-Value="plot.HouseTypeId" class="form-control">
+                <InputSelect id="houseTypeId"
+                             @bind-Value="plot.HouseTypeId"
+                             class="form-control">
                     <option value="0">-- Selectează tipul --</option>
                     @foreach (var type in houseTypes)
                     {
-                        <option value="@type.HouseTypeId">@type.Name (@type.Bedrooms cam, @type.Bathrooms băi - @type.FromPrice.ToString("C0"))</option>
+                        <option value="@type.HouseTypeId">
+                            @type.Name (@type.Bedrooms cam,
+                            @type.Bathrooms băi -
+                            @type.FromPrice.ToString("C0"))
+                        </option>
                     }
                 </InputSelect>
                 <ValidationMessage For="@(() => plot.HouseTypeId)" />
             </div>
-            
+
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                 <div class="form-group">
                     <label for="number">Număr *</label>
-                    <InputNumber id="number" @bind-Value="plot.Number" class="form-control" placeholder="ex. 101" />
+                    <InputNumber id="number"
+                                 @bind-Value="plot.Number"
+                                 class="form-control"
+                                 placeholder="ex. 101" />
                     <ValidationMessage For="@(() => plot.Number)" />
                 </div>
 
                 <div class="form-group">
                     <label for="level">Etaj</label>
-                    <InputNumber id="level" @bind-Value="plot.Level" class="form-control" placeholder="ex. 1" />
+                    <InputNumber id="level"
+                                 @bind-Value="plot.Level"
+                                 class="form-control"
+                                 placeholder="ex. 1" />
                     <ValidationMessage For="@(() => plot.Level)" />
                 </div>
             </div>
 
             <div class="form-group">
                 <label for="name">Nume (opțional)</label>
-                <InputText id="name" @bind-Value="plot.Name" class="form-control" placeholder="ex. Apartament Premium 101" />
+                <InputText id="name"
+                           @bind-Value="plot.Name"
+                           class="form-control"
+                           placeholder="ex. Apartament Premium 101" />
                 <ValidationMessage For="@(() => plot.Name)" />
             </div>
 
             <div class="form-group">
                 <label for="price">Preț (RON) *</label>
-                <InputNumber id="price" @bind-Value="plot.Price" class="form-control" />
+                <InputNumber id="price"
+                             @bind-Value="plot.Price"
+                             class="form-control" />
                 <ValidationMessage For="@(() => plot.Price)" />
             </div>
 
             <div class="form-group">
                 <label for="status">Status *</label>
-                <InputSelect id="status" @bind-Value="plot.Status" class="form-control">
+                <InputSelect id="status"
+                             @bind-Value="plot.Status"
+                             class="form-control">
                     @foreach (PlotStatus status in Enum.GetValues(typeof(PlotStatus)))
                     {
                         <option value="@status">@status</option>
@@ -76,7 +98,10 @@ else
 
             <div class="form-group">
                 <label for="marketingMessage">Mesaj marketing</label>
-                <InputTextArea id="marketingMessage" @bind-Value="plot.MarketingMessage" class="form-control" rows="3" 
+                <InputTextArea id="marketingMessage"
+                               @bind-Value="plot.MarketingMessage"
+                               class="form-control"
+                               rows="3"
                                placeholder="Descriere specială pentru această unitate..." />
                 <ValidationMessage For="@(() => plot.MarketingMessage)" />
             </div>
@@ -96,8 +121,12 @@ else
             </div>
 
             <div class="form-actions">
-                <button type="submit" class="btn btn-primary">Salvează</button>
-                <a href="/plots/@BuildingId" class="btn btn-secondary">Anulează</a>
+                <button type="submit" class="btn btn-primary">
+                    Salvează
+                </button>
+                <a href="/plots/@BuildingId" class="btn btn-secondary">
+                    Anulează
+                </a>
             </div>
 
             @if (!string.IsNullOrEmpty(errorMessage))
@@ -108,76 +137,4 @@ else
             }
         </EditForm>
     </div>
-}
-
-@code {
-    [Parameter]
-    public int BuildingId { get; set; }
-
-    [SupplyParameterFromForm]
-    private Plot plot { get; set; } = new();
-    
-    private Building? building;
-    private List<HouseType> houseTypes = new();
-    private string? errorMessage;
-
-    protected override async Task OnInitializedAsync()
-    {
-        building = await DbContext.Buildings
-            .Include(b => b.Phase)
-                .ThenInclude(p => p.Development)
-            .FirstOrDefaultAsync(b => b.BuildingId == BuildingId);
-        
-        if (building == null)
-        {
-            Navigation.NavigateTo("/plots");
-            return;
-        }
-
-        // Load house types from the same phase
-        houseTypes = await DbContext.HouseTypes
-            .Where(ht => ht.PhaseId == building.PhaseId && ht.IsAvailable)
-            .OrderBy(ht => ht.Name)
-            .ToListAsync();
-
-        if (!houseTypes.Any())
-        {
-            errorMessage = "Nu există tipuri de locuințe disponibile în această fază. Adăugați mai întâi un tip de locuință.";
-        }
-
-        // Set default values only on initial load (when plot is freshly created)
-        if (plot.BuildingId == 0)
-        {
-            plot.BuildingId = BuildingId;
-            plot.Status = PlotStatus.Available;
-        }
-    }
-
-    private async Task HandleValidSubmit()
-    {
-        try
-        {
-            var exists = await DbContext.Plots
-                .AnyAsync(p => p.BuildingId == BuildingId && p.Number == plot.Number);
-
-            if (exists)
-            {
-                errorMessage = "Există deja o unitate cu acest număr în această clădire.";
-                return;
-            }
-
-            DbContext.Plots.Add(plot);
-            await DbContext.SaveChangesAsync();
-
-            Navigation.NavigateTo($"/plots/{BuildingId}");
-        }
-        catch (NavigationException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            errorMessage = $"Eroare la salvare: {ex.Message}";
-        }
-    }
 }

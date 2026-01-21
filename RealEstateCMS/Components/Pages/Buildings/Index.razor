@@ -4,10 +4,6 @@
 
 @using RealEstateCMS.Components.Shared.Icons
 
-@inject ApplicationDbContext DbContext
-@inject NavigationManager Navigation
-@inject IJSRuntime JS
-
 <PageTitle>Clădiri</PageTitle>
 
 <div class="page-header">
@@ -60,7 +56,9 @@ else if (!buildings.Any())
         <p>Nu există clădiri @(selectedPhase != null ? $"pentru {selectedPhase.Name}" : "").</p>
         @if (PhaseId.HasValue)
         {
-            <a href="/buildings/create/@PhaseId" class="btn btn-primary">Creează prima clădire</a>
+            <a href="/buildings/create/@PhaseId" class="btn btn-primary">
+                Creează prima clădire
+            </a>
         }
     </div>
 }
@@ -102,114 +100,4 @@ else
             </tbody>
         </table>
     </div>
-}
-
-@code {
-    [Parameter]
-    public int? PhaseId { get; set; }
-
-    private List<Building>? buildings;
-    private List<Development> developments = new();
-    private List<Phase> phases = new();
-    private Phase? selectedPhase;
-    private int? selectedDevelopmentId;
-
-    protected override async Task OnInitializedAsync()
-    {
-        developments = await DbContext.Developments.OrderBy(d => d.Name).ToListAsync();
-        
-        if (PhaseId.HasValue)
-        {
-            selectedPhase = await DbContext.Phases
-                .Include(p => p.Development)
-                .FirstOrDefaultAsync(p => p.PhaseId == PhaseId.Value);
-        }
-        
-        await LoadBuildings();
-    }
-
-    private async Task LoadBuildings()
-    {
-        var baseQuery = DbContext.Buildings
-            .Include(b => b.Phase)
-            .ThenInclude(p => p.Development)
-            .Include(b => b.Plots)
-            .Where(b => !PhaseId.HasValue || b.PhaseId == PhaseId.Value);
-
-        buildings = await baseQuery
-            .OrderBy(b => b.Name)
-            .ToListAsync();
-
-        var imageCounts = await DbContext.Images
-            .Where(i => i.OwnerType == Data.Enums.OwnerType.Building)
-            .GroupBy(i => i.OwnerId)
-            .Select(g => new
-            {
-                BuildingId = g.Key,
-                Count = g.Count()
-            })
-            .ToListAsync();
-
-        foreach (var building in buildings)
-        {
-            var count = imageCounts
-                .FirstOrDefault(x => x.BuildingId == building.BuildingId);
-
-            building.Images = count == null
-                ? new List<Image>()
-                : Enumerable.Repeat(new Image(), count.Count).ToList();
-        }
-    }
-
-    private async Task OnDevelopmentChanged(ChangeEventArgs e)
-    {
-        if (int.TryParse(e.Value?.ToString(), out var devId))
-        {
-            selectedDevelopmentId = devId;
-            phases = await DbContext.Phases
-                .Where(p => p.DevelopmentId == devId)
-                .OrderBy(p => p.Name)
-                .ToListAsync();
-        }
-        else
-        {
-            selectedDevelopmentId = null;
-            phases.Clear();
-        }
-        StateHasChanged();
-    }
-
-    private void OnPhaseChanged(ChangeEventArgs e)
-    {
-        if (int.TryParse(e.Value?.ToString(), out var phaseId))
-        {
-            Navigation.NavigateTo($"/buildings/{phaseId}");
-        }
-    }
-
-    private async Task DeleteBuilding(Building building)
-    {
-        var confirmed = await JS.InvokeAsync<bool>("confirm",
-            $"Sigur doriți să ștergeți clădirea '{building.Name}'?");
-
-        if (!confirmed) return;
-
-        try
-        {
-            if (building.Plots.Any())
-            {
-                await JS.InvokeVoidAsync("alert",
-                    "Nu puteți șterge această clădire deoarece are unități (plots) asociate.");
-                return;
-            }
-
-            DbContext.Buildings.Remove(building);
-            await DbContext.SaveChangesAsync();
-            await LoadBuildings();
-        }
-        catch (Exception ex)
-        {
-            await JS.InvokeVoidAsync("alert", $"Eroare la ștergere: {ex.Message}");
-        }
-    }
 }

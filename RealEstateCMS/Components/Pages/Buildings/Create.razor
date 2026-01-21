@@ -1,9 +1,6 @@
 @page "/buildings/create/{phaseId:int}"
 @rendermode InteractiveServer
 
-@inject ApplicationDbContext DbContext
-@inject NavigationManager Navigation
-
 <PageTitle>Adaugă Clădire</PageTitle>
 
 <div class="page-header">
@@ -20,6 +17,7 @@ else
         <EditForm Model="@building"
                   OnValidSubmit="@HandleValidSubmit"
                   FormName="CreateBuildingForm">
+
             <DataAnnotationsValidator />
 
             <!-- Phase (read-only) -->
@@ -69,66 +67,4 @@ else
             }
         </EditForm>
     </div>
-}
-
-@code {
-    [Parameter]
-    public int PhaseId { get; set; }
-
-    [SupplyParameterFromForm]
-    private Building building { get; set; } = new()
-    {
-        FloorsCount = 1
-    };
-
-    private Phase? phase;
-    private string? errorMessage;
-
-    protected override async Task OnInitializedAsync()
-    {
-        phase = await DbContext.Phases
-            .Include(p => p.Development)
-            .FirstOrDefaultAsync(p => p.PhaseId == PhaseId);
-
-        if (phase == null)
-        {
-            Navigation.NavigateTo("/buildings");
-            return;
-        }
-
-        building.PhaseId = PhaseId;
-    }
-
-    private async Task HandleValidSubmit()
-    {
-        try
-        {
-            var exists = await DbContext.Buildings
-                .AnyAsync(b =>
-                    b.PhaseId == PhaseId &&
-                    b.Name == building.Name);
-
-            if (exists)
-            {
-                errorMessage = "Există deja o clădire cu acest nume în această fază.";
-                return;
-            }
-
-            DbContext.Buildings.Add(building);
-            await DbContext.SaveChangesAsync();
-
-            // Redirect to Edit so images can be added
-            Navigation.NavigateTo($"/buildings/edit/{building.BuildingId}");
-        }
-        catch (NavigationException)
-        {
-            // This is expected – do NOT treat as error
-            throw;
-        }
-        catch (Exception ex)
-        {
-            errorMessage = $"Eroare la salvare: {ex.Message}";
-        }
-
-    }
 }

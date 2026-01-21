@@ -1,13 +1,6 @@
 @page "/images"
 @rendermode InteractiveServer
 
-@using RealEstateCMS.Services
-
-@inject ApplicationDbContext DbContext
-@inject FileUploadService FileUploadService
-@inject NavigationManager
-@inject IJSRuntime JS
-
 <PageTitle>Imagini</PageTitle>
 
 <div class="page-header">
@@ -52,7 +45,7 @@ else
                     </div>
                     <p style="font-size: 0.875rem; color: #6b7280; margin: 0.5rem 0;">@image.FileName</p>
                     <p style="font-size: 0.75rem; color: #9ca3af; margin: 0.5rem 0;">@image.UploadedAt.ToString("dd.MM.yyyy HH:mm")</p>
-                    
+
                     <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
                         <a href="@GetEditUrl(image)" class="btn btn-sm btn-secondary" style="flex: 1;">
                             Vizualizează
@@ -65,77 +58,4 @@ else
             </div>
         }
     </div>
-}
-
-@code {
-    private List<Image>? images;
-    private OwnerType? selectedOwnerType;
-
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadImages();
-    }
-
-    private async Task LoadImages()
-    {
-        var query = DbContext.Images.AsQueryable();
-
-        if (selectedOwnerType.HasValue)
-        {
-            query = query.Where(i => i.OwnerType == selectedOwnerType.Value);
-        }
-
-        images = await query
-            .OrderByDescending(i => i.UploadedAt)
-            .ToListAsync();
-    }
-
-    private async Task OnOwnerTypeChanged(ChangeEventArgs e)
-    {
-        if (Enum.TryParse<OwnerType>(e.Value?.ToString(), out var ownerType))
-        {
-            selectedOwnerType = ownerType;
-        }
-        else
-        {
-            selectedOwnerType = null;
-        }
-        await LoadImages();
-    }
-
-    private string GetEditUrl(Image image)
-    {
-        return image.OwnerType switch
-        {
-            OwnerType.Building => $"/buildings/edit/{image.OwnerId}",
-            OwnerType.HouseType => $"/housetypes/edit/{image.OwnerId}",
-            OwnerType.Plot => $"/plots/edit/{image.OwnerId}",
-            _ => "/"
-        };
-    }
-
-    private async Task DeleteImage(Image image)
-    {
-        var confirmed = await JS.InvokeAsync<bool>("confirm",
-            $"Sigur doriți să ștergeți imaginea '{image.FileName}'?");
-
-        if (!confirmed) return;
-
-        try
-        {
-            // Delete file from disk
-            FileUploadService.DeleteImage(image.FilePath);
-
-            // Delete from database
-            DbContext.Images.Remove(image);
-            await DbContext.SaveChangesAsync();
-            
-            // Reload images
-            await LoadImages();
-        }
-        catch (Exception ex)
-        {
-            await JS.InvokeVoidAsync("alert", $"Eroare la ștergere: {ex.Message}");
-        }
-    }
 }

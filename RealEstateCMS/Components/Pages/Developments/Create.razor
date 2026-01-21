@@ -1,7 +1,5 @@
 @page "/developments/create"
-
-@inject ApplicationDbContext DbContext
-@inject NavigationManager Navigation
+@rendermode InteractiveServer
 
 <PageTitle>Adaugă Development</PageTitle>
 
@@ -16,22 +14,32 @@
               FormName="CreateDevelopmentForm">
 
         <DataAnnotationsValidator />
-        
+
         <div class="form-group">
             <label for="name">Nume *</label>
-            <InputText id="name" @bind-Value="development.Name" class="form-control" placeholder="ex. Green Park Residence" />
+            <InputText id="name"
+                       @bind-Value="development.Name"
+                       class="form-control"
+                       placeholder="ex. Green Park Residence" />
             <ValidationMessage For="@(() => development.Name)" />
         </div>
 
         <div class="form-group">
             <label for="location">Locație</label>
-            <InputText id="location" @bind-Value="development.Location" class="form-control" placeholder="ex. București, Sector 2" />
+            <InputText id="location"
+                       @bind-Value="development.Location"
+                       class="form-control"
+                       placeholder="ex. București, Sector 2" />
             <ValidationMessage For="@(() => development.Location)" />
         </div>
 
         <div class="form-actions">
-            <button type="submit" class="btn btn-primary">Salvează</button>
-            <a href="/developments" class="btn btn-secondary">Anulează</a>
+            <button type="submit" class="btn btn-primary">
+                Salvează
+            </button>
+            <a href="/developments" class="btn btn-secondary">
+                Anulează
+            </a>
         </div>
 
         @if (!string.IsNullOrEmpty(errorMessage))
@@ -42,55 +50,3 @@
         }
     </EditForm>
 </div>
-
-@code {
-    [SupplyParameterFromForm]
-    private Development development { get; set; } = new();
-    
-    private string? errorMessage;
-
-    private async Task HandleValidSubmit()
-    {
-        try
-        {
-            // Normalize input (important for RequiredTrimmed + duplicate checks)
-            development.Name = development.Name?.Trim() ?? string.Empty;
-            
-            if (!string.IsNullOrWhiteSpace(development.Location))
-            {
-                development.Location = development.Location.Trim();
-            }
-
-            // Check for duplicate name (case-insensitive)
-            var exists = await DbContext.Developments
-                .AnyAsync(d => d.Name == development.Name);
-
-            if (exists)
-            {
-                errorMessage = "Există deja un development cu acest nume.";
-                return;
-            }
-
-            development.CreatedAt = DateTime.Now;
-
-            DbContext.Developments.Add(development);
-            await DbContext.SaveChangesAsync();
-
-            Navigation.NavigateTo("/developments");
-        }
-        catch (NavigationException)
-        {
-            // Normal in Blazor when navigating after async events
-            throw;
-        }
-        catch (Exception ex)
-        {
-            errorMessage = $"Eroare la salvare: {ex.Message}";
-        }
-    }
-    
-    private void HandleInvalidSubmit()
-    {
-        errorMessage = "Completează câmpurile obligatorii corect.";
-    }
-}

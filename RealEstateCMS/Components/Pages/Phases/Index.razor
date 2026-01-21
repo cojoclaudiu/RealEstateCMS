@@ -4,10 +4,6 @@
 
 @using RealEstateCMS.Components.Shared.Icons
 
-@inject ApplicationDbContext DbContext
-@inject NavigationManager Navigation
-@inject IJSRuntime JS
-
 <PageTitle>Faze</PageTitle>
 
 <div class="page-header">
@@ -46,7 +42,9 @@ else if (!phases.Any())
         <p>Nu există faze @(selectedDevelopment != null ? $"pentru {selectedDevelopment.Name}" : "").</p>
         @if (DevelopmentId.HasValue)
         {
-            <a href="/phases/create/@DevelopmentId" class="btn btn-primary">Creează prima fază</a>
+            <a href="/phases/create/@DevelopmentId" class="btn btn-primary">
+                Creează prima fază
+            </a>
         }
     </div>
 }
@@ -75,10 +73,14 @@ else
                         <td><span class="badge">@phase.HouseTypes.Count</span></td>
                         <td class="actions-column">
                             <div class="action-buttons">
-                                <a href="/phases/edit/@phase.PhaseId" class="btn btn-sm btn-secondary" title="Editează">
+                                <a href="/phases/edit/@phase.PhaseId"
+                                   class="btn btn-sm btn-secondary"
+                                   title="Editează">
                                     <EditIcon />
                                 </a>
-                                <button @onclick="() => DeletePhase(phase.PhaseId)" class="btn btn-sm btn-danger" title="Șterge">
+                                <button @onclick="() => DeletePhase(phase.PhaseId)"
+                                        class="btn btn-sm btn-danger"
+                                        title="Șterge">
                                     <DeleteIcon />
                                 </button>
                             </div>
@@ -88,88 +90,4 @@ else
             </tbody>
         </table>
     </div>
-}
-
-@code {
-    [Parameter]
-    public int? DevelopmentId { get; set; }
-
-    private List<Phase>? phases;
-    private List<Development> developments = new();
-    private Development? selectedDevelopment;
-
-    protected override async Task OnInitializedAsync()
-    {
-        developments = await DbContext.Developments.OrderBy(d => d.Name).ToListAsync();
-        
-        if (DevelopmentId.HasValue)
-        {
-            selectedDevelopment = await DbContext.Developments.FindAsync(DevelopmentId.Value);
-        }
-        
-        await LoadPhases();
-    }
-
-    private async Task LoadPhases()
-    {
-        var query = DbContext.Phases
-            .Include(p => p.Development)
-            .Include(p => p.Buildings)
-            .Include(p => p.HouseTypes)
-            .AsQueryable();
-
-        if (DevelopmentId.HasValue)
-        {
-            query = query.Where(p => p.DevelopmentId == DevelopmentId.Value);
-        }
-
-        phases = await query.OrderBy(p => p.Name).ToListAsync();
-    }
-
-    private void OnDevelopmentChanged(ChangeEventArgs e)
-    {
-        if (int.TryParse(e.Value?.ToString(), out var devId))
-        {
-            Navigation.NavigateTo($"/phases/{devId}");
-        }
-        else
-        {
-            Navigation.NavigateTo("/phases");
-        }
-    }
-
-    private async Task DeletePhase(int phaseId)
-    {
-        try
-        {
-            var phase = await DbContext.Phases
-                .Include(p => p.Buildings)
-                .Include(p => p.HouseTypes)
-                .FirstOrDefaultAsync(p => p.PhaseId == phaseId);
-
-            if (phase == null)
-                return;
-
-            var confirmed = await JS.InvokeAsync<bool>("confirm",
-                $"Sigur doriți să ștergeți faza '{phase.Name}'?");
-
-            if (!confirmed) 
-                return;
-
-            if (phase.Buildings.Any() || phase.HouseTypes.Any())
-            {
-                await JS.InvokeVoidAsync("alert",
-                    "Nu puteți șterge această fază deoarece are clădiri sau tipuri de locuințe asociate.");
-                return;
-            }
-
-            DbContext.Phases.Remove(phase);
-            await DbContext.SaveChangesAsync();
-            await LoadPhases();
-        }
-        catch (Exception ex)
-        {
-            await JS.InvokeVoidAsync("alert", $"Eroare la ștergere: {ex.Message}");
-        }
-    }
 }
