@@ -1,4 +1,5 @@
 @using RealEstateCMS.Components.Shared.Icons
+
 <div class="action-buttons">
     <a href="@EditUrl"
        class="btn btn-sm btn-secondary"
@@ -12,8 +13,3 @@
         <DeleteIcon />
     </button>
 </div>
-
-@code {
-    [Parameter, EditorRequired] public string EditUrl { get; set; } = default!;
-    [Parameter, EditorRequired] public EventCallback OnDelete { get; set; }
-}
